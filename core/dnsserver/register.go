@@ -3,6 +3,8 @@ package dnsserver
 import (
 	"fmt"
 	"net"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -157,36 +159,42 @@ func (h *dnsContext) MakeServers() ([]caddy.Server, error) {
 	}
 	// then we create a server for each group
 	var servers []caddy.Server
-	for addr, group := range groups {
-		// switch on addr
-		switch tr, _ := parse.Transport(addr); tr {
-		case transport.DNS:
-			s, err := NewServer(addr, group)
-			if err != nil {
-				return nil, err
-			}
-			servers = append(servers, s)
+	numSock, err := strconv.ParseInt(os.Getenv("NUM_SOCK"), 10, 64)
+	if err != nil {
+		numSock = 1
+	}
+	for i := 0; i < int(numSock); i++ {
+		for addr, group := range groups {
+			// switch on addr
+			switch tr, _ := parse.Transport(addr); tr {
+			case transport.DNS:
+				s, err := NewServer(addr, group)
+				if err != nil {
+					return nil, err
+				}
+				servers = append(servers, s)
 
-		case transport.TLS:
-			s, err := NewServerTLS(addr, group)
-			if err != nil {
-				return nil, err
-			}
-			servers = append(servers, s)
+			case transport.TLS:
+				s, err := NewServerTLS(addr, group)
+				if err != nil {
+					return nil, err
+				}
+				servers = append(servers, s)
 
-		case transport.GRPC:
-			s, err := NewServergRPC(addr, group)
-			if err != nil {
-				return nil, err
-			}
-			servers = append(servers, s)
+			case transport.GRPC:
+				s, err := NewServergRPC(addr, group)
+				if err != nil {
+					return nil, err
+				}
+				servers = append(servers, s)
 
-		case transport.HTTPS:
-			s, err := NewServerHTTPS(addr, group)
-			if err != nil {
-				return nil, err
+			case transport.HTTPS:
+				s, err := NewServerHTTPS(addr, group)
+				if err != nil {
+					return nil, err
+				}
+				servers = append(servers, s)
 			}
-			servers = append(servers, s)
 		}
 	}
 
